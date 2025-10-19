@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Toy Store - Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        #audio-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 1000; color: #333; }
+        .modal-content { background: white; padding: 40px; border-radius: 12px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .modal-content h2 { margin-bottom: 15px; }
+        .modal-content p { margin-bottom: 25px; color: #666; }
+        .modal-content button { padding: 12px 25px; font-size: 16px; cursor: pointer; border: none; border-radius: 8px; background-color: #667eea; color: white; font-weight: bold; transition: background-color 0.3s; }
+        .modal-content button:hover { background-color: #5a6dcf; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 28px; color: #333; display: flex; align-items: center; gap: 12px; }
+        .header-controls { display: flex; gap: 10px; }
+        .connection-status { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+        .connection-status.connected { background: #10b981; color: white; }
+        .connection-status.disconnected { background: #ef4444; color: white; }
+        .status-indicator { width: 10px; height: 10px; border-radius: 50%; background: white; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .stat-card h3 { font-size: 14px; color: #666; margin-bottom: 8px; }
+        .stat-card .value { font-size: 32px; font-weight: bold; color: #333; }
+        .content { background: white; padding: 24px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .content h2 { font-size: 20px; color: #333; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #f8f9fa; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { font-weight: 600; color: #555; border-bottom-width: 2px; }
+        tr:hover { background: #f8f9fa; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-processing, .status-on-the-way { animation: blink 1s infinite; }
+        .status-processing { background: #dbeafe; color: #1e40af; }
+        .status-on-the-way { background: #e9d5ff; color: #6b21a8; }
+        .status-delivered { background: #d1fae5; color: #065f46; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+        #clear-history-btn { padding: 8px 16px; font-size: 14px; cursor: pointer; border: 1px solid #ef4444; border-radius: 8px; background-color: #fee2e2; color: #991b1b; font-weight: bold; transition: all 0.3s; }
+        #clear-history-btn:hover { background-color: #ef4444; color: white; }
+    </style>
+</head>
+<body>
+    <audio id="audio-toy-guns" src="/sounds/ebona.mp3" preload="auto"></audio>
+    <audio id="audio-action-figures" src="/sounds/cruz.mp3" preload="auto"></audio>
+    <audio id="audio-dolls" src="/sounds/marl.mp3" preload="auto"></audio>
+    <audio id="audio-puzzles" src="/sounds/renz.mp3" preload="auto"></audio>
+
+    <div id="app-container" class="container">
+        <div class="header">
+            <h1><span style="font-size: 36px;">🧸</span> Smart Toy Store Dashboard</h1>
+            <div class="header-controls">
+                <div id="connectionStatus" class="connection-status disconnected"><div class="status-indicator"></div><span>Disconnected</span></div>
+                <button id="clear-history-btn">Clear History</button>
+            </div>
+        </div>
+        <div class="stats">            <div class="stat-card"><h3>Total Orders</h3><div class="value" id="totalOrders">0</div></div><div class="stat-card"><h3>Pending</h3><div class="value" id="pendingOrders" style="color: #f59e0b;">0</div></div><div class="stat-card"><h3>In Progress</h3><div class="value" id="processingOrders" style="color: #3b82f6;">0</div></div><div class="stat-card"><h3>Delivered</h3><div class="value" id="deliveredOrders" style="color: #10b981;">0</div></div><div class="stat-card"><h3>Total Revenue</h3><div class="value" id="totalRevenue" style="color: #8b5cf6;">$0</div></div></div>
+        <div class="content"><h2>Live Orders</h2><table id="ordersTable"><thead><tr><th>Category</th><th>Toy Name</th><th>RFID UID</th><th>Assigned Person</th><th>Status</th><th>Amount</th></tr></thead><tbody id="ordersBody"></tbody></table></div>
+    </div>
+
+    <div id="audio-modal">
+        <div class="modal-content"><h2>Welcome</h2><p>Click to enable audio notifications.</p><button id="enable-audio-btn">Enable Sound & Enter</button></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api';
+        const WS_URL = `ws://${window.location.host}/ws`;
+
+        let socket = null;
+        let orders = [];
+        let audioUnlocked = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('enable-audio-btn').addEventListener('click', async () => {
+                document.getElementById('audio-modal').style.display = 'none';
+                
+                if (!audioUnlocked) {
+                    try {
+                        await Promise.all(Array.from(document.querySelectorAll('audio')).map(async (sound) => {
+                            if (!sound.src.includes('sounds')) return;
+                            sound.muted = true;
+                            await sound.play();
+                            sound.pause();
+                            sound.currentTime = 0;
+                            sound.muted = false;
+                        }));
+                        audioUnlocked = true;
+                        console.log('Audio context unlocked successfully.');
+                    } catch (error) {
+                        console.error('Audio unlock failed:', error);
+                        audioUnlocked = true;
+                    }
+                }
+                
+                initializeDashboard();
+            }, { once: true });
+
+            document.getElementById('clear-history-btn').addEventListener('click', async () => {
+                if (confirm('Are you sure you want to delete all orders? This action cannot be undone.')) {
+                    try {
+                        const response = await fetch(`${API_BASE_URL}/orders/clear`, { method: 'POST' });
+                        if (!response.ok) throw new Error('Failed to clear orders');
+                        orders = [];
+                        saveOrdersToCache();
+                        renderDashboard();
+                        console.log('Order history cleared.');
+                    } catch (error) {
+                        console.error('Error clearing order history:', error);
+                    }
+                }
+            });
+        });
+
+        function initializeDashboard() {
+            loadOrdersFromCache();
+            fetchAndRenderOrders();
+            connectWebSocket();
+        }
+
+        async function fetchAndRenderOrders() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders`);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                orders = await response.json();
+                saveOrdersToCache();
+                renderDashboard();
+            } catch (error) {
+                console.error('Failed to fetch orders:', error);
+            }
+        }
+
+        function connectWebSocket() {
+            socket = new WebSocket(WS_URL);
+            socket.onopen = () => {
+                console.log('WebSocket connected');
+                updateConnectionStatus(true);
+            };
+            socket.onmessage = (event) => {
+                if (!event.data) return;
+                try {
+                    const message = JSON.parse(event.data);
+                    // Handle clear event from server
+                    if (message.type === 'clear') {
+                        orders = [];
+                        saveOrdersToCache();
+                        renderDashboard();
+                        return;
+                    }
+                    
+                    const isNewOrder = !orders.some(o => o.id === message.id);
+                    updateOrAddOrder(message);
+                    if (isNewOrder) {
+                        playSoundForOrder(message);
+                    }
+                    saveOrdersToCache();
+                    renderDashboard();
+                } catch (error) {
+                    console.error('Error parsing message:', error);
+                }
+            };
+            socket.onerror = (error) => console.error('WebSocket error:', error);
+            socket.onclose = () => {
+                console.log('WebSocket disconnected');
+                updateConnectionStatus(false);
+                setTimeout(connectWebSocket, 5000);
+            };
+        }
+
+        function renderDashboard() {
+            renderOrders();
+            updateStats();
+        }
+
+        function renderOrders() {
+            const tbody = document.getElementById('ordersBody');
+            if (orders.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><p>No orders yet.</p></td></tr>`;
+                return;
+            }
+            tbody.innerHTML = orders.map(o => `
+                <tr id="order-${o.id}">
+                    <td>${o.category}</td>
+                    <td>${o.toy_name}</td>
+                    <td>${o.rfid_uid}</td>
+                    <td>${o.assigned_person}</td>
+                    <td><span class="status-badge status-${o.status.toLowerCase().replace(/_/g, '-')}">${o.status}</span></td>
+                    <td>$${o.total_amount.toFixed(2)}</td>
+                </tr>`).join('');
+        }
+
+        function updateStats() {
+            const total = orders.length;
+            const pending = orders.filter(o => o.status === 'PENDING').length;
+            const inProgress = orders.filter(o => ['PROCESSING', 'ON_THE_WAY'].includes(o.status)).length;
+            const delivered = orders.filter(o => o.status === 'DELIVERED').length;
+            const revenue = orders.reduce((sum, o) => sum + o.total_amount, 0);
+
+            document.getElementById('totalOrders').textContent = total;
+            document.getElementById('pendingOrders').textContent = pending;
+            document.getElementById('processingOrders').textContent = inProgress;
+            document.getElementById('deliveredOrders').textContent = delivered;
+            document.getElementById('totalRevenue').textContent = `$${revenue.toFixed(2)}`;
+        }
+
+        function updateConnectionStatus(connected) {
+            const statusEl = document.getElementById('connectionStatus');
+            statusEl.className = `connection-status ${connected ? 'connected' : 'disconnected'}`;
+            statusEl.innerHTML = `<div class="status-indicator"></div><span>${connected ? 'Connected' : 'Disconnected'}</span>`;
+        }
+
+        function playSoundForOrder(order) {
+            if (!audioUnlocked) return;
+            let soundId = '';
+            switch (order.category) {
+                case 'Toy Guns': soundId = 'audio-toy-guns'; break;
+                case 'Action Figures': soundId = 'audio-action-figures'; break;
+                case 'Dolls': soundId = 'audio-dolls'; break;
+                case 'Puzzles': soundId = 'audio-puzzles'; break;
+                default: return;
+            }
+            const sound = document.getElementById(soundId);
+            if (sound) {
+                sound.currentTime = 0;
+                sound.play().catch(error => console.error(`Error playing sound '${soundId}':`, error));
+            }
+        }
+
+        function updateOrAddOrder(order) {
+            const index = orders.findIndex(o => o.id === order.id);
+            if (index >= 0) {
+                orders[index] = order;
+            } else {
+                orders.unshift(order);
+            }
+        }
+
+        function saveOrdersToCache() {
+            localStorage.setItem('smartToyStoreOrders', JSON.stringify(orders));
+        }
+
+        function loadOrdersFromCache() {
+            const cachedOrders = localStorage.getItem('smartToyStoreOrders');
+            if (cachedOrders) {
+                try {
+                    orders = JSON.parse(cachedOrders);
+                    renderDashboard();
+                } catch(e) {
+                    orders = [];
+                }
+            }
+        }
+
+    </script>
+</body>
+</html>
