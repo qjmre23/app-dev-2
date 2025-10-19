@@ -28,14 +28,11 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _handleSignup() async {
     if (_formKey.currentState!.validate()) {
       final provider = Provider.of<AppProvider>(context, listen: false);
-      // Assign a default department for customers
-      const defaultDepartment = 'General';
-      
+
       final success = await provider.signup(
         _usernameController.text.trim(),
         _emailController.text.trim(),
         _passwordController.text,
-        defaultDepartment,
       );
 
       if (success && mounted) {

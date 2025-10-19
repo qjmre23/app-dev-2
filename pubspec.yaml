@@ -17,6 +17,7 @@ dependencies:
   shared_preferences: ^2.0.15
   jwt_decoder: ^2.0.1
   web_socket_channel: ^2.4.0
+  supabase_flutter: ^2.3.0
 
 
 dev_dependencies:
